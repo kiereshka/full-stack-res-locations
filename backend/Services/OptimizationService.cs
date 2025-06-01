@@ -23,10 +23,11 @@ namespace kiereshka.Services
             {
                 BestSolution = Enumerable.Repeat(0, input.N).ToList(),
                 MaxCapacity = 0,
+                TotalCost = 0, // Ініціалізація вартості
                 ValidCoordinates = input.Locations.Select(l => new Coordinate { X = l.X, Y = l.Y }).ToList()
             };
 
-            // Перевірка мінімальної дистанції (D) між точками
+            // Перевірка мінімальної дистанції між точками
             foreach (var loc1 in input.Locations)
             {
                 foreach (var loc2 in input.Locations)
@@ -42,7 +43,6 @@ namespace kiereshka.Services
                 }
             }
 
-            // Логіка вибору найкращого рішення (приклад)
             int remainingBudget = input.C;
             for (int i = 0; i < input.M; i++)
             {
@@ -51,8 +51,9 @@ namespace kiereshka.Services
                 {
                     if (location.Costs[j] <= remainingBudget)
                     {
-                        result.BestSolution[j] = 1; // Вибираємо RES
+                        result.BestSolution[j] = 1;
                         result.MaxCapacity += location.Capacities[j];
+                        result.TotalCost += location.Costs[j]; // Накопичення вартості
                         remainingBudget -= location.Costs[j];
                     }
                 }
