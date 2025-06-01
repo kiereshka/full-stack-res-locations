@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'; // Виправлено імпорт
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { Button } from 'react-bootstrap';
 import PropTypes from 'prop-types';
 import './InteractiveMap.css';
@@ -7,6 +7,7 @@ import './InteractiveMap.css';
 const InteractiveMap = ({ onPointsPlaced, initialPoints = [] }) => {
     const [points, setPoints] = useState(initialPoints);
     const [dragging, setDragging] = useState(null);
+    const [justDropped, setJustDropped] = useState(false);
     const svgRef = useRef(null);
 
     const GRID_SIZE = 100;
@@ -18,23 +19,42 @@ const InteractiveMap = ({ onPointsPlaced, initialPoints = [] }) => {
         return { x: snappedX, y: snappedY };
     };
 
-    const handleClick = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
+    const getSvgCoordinates = (event) => {
         const svg = svgRef.current;
         if (!svg) {
             console.error('SVG ref is null');
+            return null;
+        }
+
+        const point = svg.createSVGPoint();
+        point.x = event.clientX;
+        point.y = event.clientY;
+
+        const ctm = svg.getScreenCTM();
+        if (!ctm) {
+            console.error('CTM is null');
+            return null;
+        }
+
+        const transformedPoint = point.matrixTransform(ctm.inverse());
+        const x = transformedPoint.x;
+        const y = GRID_SIZE - transformedPoint.y;
+        return snapToGrid(x, y);
+    };
+
+    const handleClick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (justDropped) {
+            console.log('Ignoring click after drag');
             return;
         }
 
-        const rect = svg.getBoundingClientRect();
-        const scaleX = GRID_SIZE / rect.width;
-        const scaleY = GRID_SIZE / rect.height;
-        const x = (event.clientX - rect.left) * scaleX;
-        const y = (rect.height - (event.clientY - rect.top)) * scaleY;
-        const snappedPoint = snapToGrid(x, y);
+        const snappedPoint = getSvgCoordinates(event);
+        if (!snappedPoint) return;
 
-        console.log('Click coordinates:', { rawX: x, rawY: y, snappedPoint, existingPoints: points });
+        console.log('Click coordinates:', { snappedPoint, existingPoints: points });
 
         const exists = points.some(p => p.x === snappedPoint.x && p.y === snappedPoint.y);
         if (!exists) {
@@ -52,24 +72,35 @@ const InteractiveMap = ({ onPointsPlaced, initialPoints = [] }) => {
     };
 
     useEffect(() => {
+        let lastUpdate = 0;
+        const THROTTLE_MS = 60; // Обмеження до ~16 викликів на секунду
+
         const handleMouseMove = (e) => {
+            const now = Date.now();
+            if (now - lastUpdate < THROTTLE_MS) return;
+            lastUpdate = now;
+
             if (dragging !== null) {
-                const svg = svgRef.current;
-                if (!svg) return;
+                const snappedPoint = getSvgCoordinates(e);
+                if (!snappedPoint) return;
 
-                const rect = svg.getBoundingClientRect();
-                const scaleX = GRID_SIZE / rect.width;
-                const scaleY = GRID_SIZE / rect.height;
-                const x = (e.clientX - rect.left) * scaleX;
-                const y = (rect.height - (e.clientY - rect.top)) * scaleY;
-                const snappedPoint = snapToGrid(x, y);
-
-                console.log('Dragging point:', { x, y, snappedPoint });
+                console.log('Dragging point:', { snappedPoint, allPoints: points, draggingIndex: dragging });
 
                 const newPoints = [...points];
-                if (!newPoints.some((p, i) => i !== dragging && p.x === snappedPoint.x && p.y === snappedPoint.y)) {
-                    newPoints[dragging] = snappedPoint;
+                const oldPoint = newPoints[dragging];
+                newPoints[dragging] = snappedPoint;
+
+                const duplicateExists = newPoints.some(
+                    (p, i) => i !== dragging && p.x === snappedPoint.x && p.y === snappedPoint.y
+                );
+
+                console.log('Duplicate check:', { duplicateExists, newPoints, snappedPoint });
+
+                if (!duplicateExists) {
                     setPoints(newPoints);
+                } else {
+                    alert(`Точка з координатами (${snappedPoint.x}, ${snappedPoint.y}) вже існує.`);
+                    newPoints[dragging] = oldPoint; // Відновлюємо стару позицію
                 }
             }
         };
@@ -78,6 +109,8 @@ const InteractiveMap = ({ onPointsPlaced, initialPoints = [] }) => {
             if (dragging !== null) {
                 console.log('Mouse up, dragging stopped');
                 setDragging(null);
+                setJustDropped(true);
+                setTimeout(() => setJustDropped(false), 200); // Збільшено таймаут
             }
         };
 
@@ -149,27 +182,26 @@ const InteractiveMap = ({ onPointsPlaced, initialPoints = [] }) => {
                         {axisLabels}
                         {points.map((p, i) => (
                             <g key={i}>
-                                <circle
-                                    cx={p.x}
-                                    cy={GRID_SIZE - p.y}
-                                    r="3"
-                                    fill={colors[i % colors.length]}
-                                    stroke="#fff"
-                                    strokeWidth="1"
-                                    className="map-point"
-                                    onMouseDown={(e) => handleMouseDown(i, e)}
-                                />
-                                <text
-                                    x={p.x + 4}
-                                    y={GRID_SIZE - p.y - 2}
-                                    fontSize="4"
-                                    fill={colors[i % colors.length]}
-                                    className="map-point-label"
-                                >
-                                    ({p.x}, {p.y})
-                                </text>
-                            </g>
-                        ))}
+                        <circle
+                            cx={p.x}
+                            cy={GRID_SIZE - p.y}
+                            r="3"
+                            fill={colors[i % colors.length]}
+                            stroke="black" strokeWidth="1"
+                            className="click"
+                            onMouseDown={(e) => handleMouseDown(i, e)}
+                        />
+                        <text
+                            x={p.x + 4}
+                            y={GRID_SIZE - p.y - 2}
+                            fontSize="4"
+                            fill={colors[i % colors.length]}
+                            className="map-point-label"
+                        >
+                            ({p.x}, {p.y})
+                        </text>
+                    </g>
+                    ))}
                     </svg>
                 </TransformComponent>
             </TransformWrapper>
