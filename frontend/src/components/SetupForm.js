@@ -1,63 +1,75 @@
 import React, { useState } from 'react';
-import { Form, Button } from 'react-bootstrap';
+import { Form, Button, FloatingLabel } from 'react-bootstrap';
 import PropTypes from 'prop-types';
 
-const SetupForm = ({ onSubmit }) => {
-    const [m, setM] = useState(30);
+const SetupForm = ({ onSubmit, showM }) => {
     const [n, setN] = useState(50);
     const [d, setD] = useState(5);
     const [C, setC] = useState(5000);
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const parsedM = parseInt(m, 10);
         const parsedN = parseInt(n, 10);
         const parsedD = parseInt(d, 10);
         const parsedC = parseInt(C, 10);
-        if (isNaN(parsedM) || parsedM <= 0) {
-            alert('m must be a positive integer');
-            return;
-        }
         if (isNaN(parsedN) || parsedN <= 0) {
-            alert('n must be a positive integer');
+            alert('n має бути додатним цілим числом');
             return;
         }
         if (isNaN(parsedD) || parsedD <= 0) {
-            alert('d must be a positive integer');
+            alert('d має бути додатним цілим числом');
             return;
         }
         if (isNaN(parsedC) || parsedC <= 0) {
-            alert('C must be a positive integer');
+            alert('C має бути додатним цілим числом');
             return;
         }
-        onSubmit({ m: parsedM, n: parsedN, d: parsedD, C: parsedC });
+        onSubmit({ n: parsedN, d: parsedD, C: parsedC });
     };
 
     return (
-        <Form onSubmit={handleSubmit}>
-            <Form.Group>
-                <Form.Label>Кількість локацій (m)</Form.Label>
-                <Form.Control type="number" min="1" value={m} onChange={(e) => setM(e.target.value)} />
-            </Form.Group>
-            <Form.Group>
-                <Form.Label>Кількість RES (n)</Form.Label>
-                <Form.Control type="number" min="1" value={n} onChange={(e) => setN(e.target.value)} />
-            </Form.Group>
-            <Form.Group>
-                <Form.Label>Мінімальна дистанція (d)</Form.Label>
-                <Form.Control type="number" min="1" value={d} onChange={(e) => setD(e.target.value)} />
-            </Form.Group>
-            <Form.Group>
-                <Form.Label>Бюджет (C)</Form.Label>
-                <Form.Control type="number" min="1" value={C} onChange={(e) => setC(e.target.value)} />
-            </Form.Group>
-            <Button type="submit">Далі</Button>
+        <Form onSubmit={handleSubmit} style={{ maxWidth: 400, margin: '20px auto' }}>
+            <FloatingLabel controlId="formN" label="Кількість RES (n)" className="mb-3">
+                <Form.Control
+                    type="number"
+                    value={n}
+                    onChange={(e) => setN(e.target.value)}
+                    min="1"
+                    required
+                />
+            </FloatingLabel>
+            <FloatingLabel controlId="formD" label="Мінімальна дистанція (d)" className="mb-3">
+                <Form.Control
+                    type="number"
+                    value={d}
+                    onChange={(e) => setD(e.target.value)}
+                    min="1"
+                    required
+                />
+            </FloatingLabel>
+            <FloatingLabel controlId="formC" label="Бюджет (C)" className="mb-3">
+                <Form.Control
+                    type="number"
+                    value={C}
+                    onChange={(e) => setC(e.target.value)}
+                    min="1"
+                    required
+                />
+            </FloatingLabel>
+            <Button type="submit" variant="primary" className="w-100">
+                Далі
+            </Button>
         </Form>
     );
 };
 
 SetupForm.propTypes = {
     onSubmit: PropTypes.func.isRequired,
+    showM: PropTypes.bool,
+};
+
+SetupForm.defaultProps = {
+    showM: true,
 };
 
 export default SetupForm;

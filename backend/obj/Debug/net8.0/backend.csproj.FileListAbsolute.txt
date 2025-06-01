@@ -27,3 +27,9 @@ C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\obj\Debug\net8.0\refin
 C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\obj\Debug\net8.0\backend.pdb
 C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\obj\Debug\net8.0\backend.genruntimeconfig.cache
 C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\obj\Debug\net8.0\ref\backend.dll
+C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\obj\Debug\net8.0\backend.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\obj\Debug\net8.0\backend.sourcelink.json
+C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\bin\Debug\net8.0\Microsoft.OpenApi.dll
+C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\bin\Debug\net8.0\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\kiers\WebstormProjects\full-stack-diplom\backend\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerUI.dll

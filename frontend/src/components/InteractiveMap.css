@@ -1,0 +1,40 @@
+.map-wrapper {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 10px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.map-svg {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.map-point {
+    cursor: pointer;
+}
+
+.map-point-label {
+    user-select: none;
+}
+
+.map-button {
+    display: block;
+    margin: 10px auto;
+    padding: 10px 20px;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.map-button:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
