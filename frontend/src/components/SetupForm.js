@@ -29,7 +29,7 @@ const SetupForm = ({ onSubmit, showM }) => {
 
     return (
         <Form onSubmit={handleSubmit} style={{ maxWidth: 400, margin: '20px auto' }}>
-            <FloatingLabel controlId="formN" label="Кількість RES (n)" className="mb-3">
+            <FloatingLabel controlId="formN" label="Кількість ВДЕ на ринку" className="mb-3">
                 <Form.Control
                     type="number"
                     value={n}
@@ -38,7 +38,7 @@ const SetupForm = ({ onSubmit, showM }) => {
                     required
                 />
             </FloatingLabel>
-            <FloatingLabel controlId="formD" label="Мінімальна дистанція (d)" className="mb-3">
+            <FloatingLabel controlId="formD" label="Мінімальна дистанція" className="mb-3">
                 <Form.Control
                     type="number"
                     value={d}
@@ -47,7 +47,7 @@ const SetupForm = ({ onSubmit, showM }) => {
                     required
                 />
             </FloatingLabel>
-            <FloatingLabel controlId="formC" label="Бюджет (C)" className="mb-3">
+            <FloatingLabel controlId="formC" label="Бюджет" className="mb-3">
                 <Form.Control
                     type="number"
                     value={C}

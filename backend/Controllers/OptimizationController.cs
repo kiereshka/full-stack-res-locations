@@ -18,19 +18,13 @@ public class OptimizationController : ControllerBase
     public async Task<IActionResult> Optimize([FromBody] OptimizationInput input)
     {
         if (input == null)
-        {
             return BadRequest("Вхідні дані не можуть бути порожніми.");
-        }
 
         if (input.M <= 0 || input.N <= 0 || input.D < 0 || input.C < 0)
-        {
             return BadRequest("Параметри M, N, D і C повинні бути невід’ємними.");
-        }
 
         if (input.Locations == null || input.Locations.Count != input.M)
-        {
             return BadRequest($"Кількість локацій повинна дорівнювати {input.M}.");
-        }
 
         foreach (var location in input.Locations)
         {
@@ -48,6 +42,8 @@ public class OptimizationController : ControllerBase
         }
         catch (Exception ex)
         {
+            Console.WriteLine("=== SERVER ERROR ===");
+            Console.WriteLine(ex);
             return StatusCode(500, $"Помилка сервера: {ex.Message}");
         }
     }

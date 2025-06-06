@@ -8,24 +8,20 @@ const Results = ({ data, points, onPointToggle }) => {
         .map((val, idx) => (val ? idx : null))
         .filter((i) => i !== null);
 
-    const [scale, setScale] = useState(100); // Масштаб
-
-    const handleScaleChange = (e) => {
-        setScale(Number(e.target.value));
-    };
-
-    const scaleFactor = 600 / scale; // Масштаб для переведення координат в пікселі
+    const [scale, setScale] = useState(100);
+    const handleScaleChange = (e) => setScale(Number(e.target.value));
+    const scaleFactor = 600 / scale;
 
     return (
         <div className="container mt-4">
             <h2>Результати</h2>
             <p><strong>Вибрані локації:</strong></p>
             <ul>
-                {selectedIndices.map((i) => (
+                {selectedIndices.map((i) =>
                     points[i] ? (
                         <li key={i}>Локація {i + 1}: ({points[i].x.toFixed(2)}, {points[i].y.toFixed(2)})</li>
                     ) : null
-                ))}
+                )}
             </ul>
 
             <p><strong>Максимальна потужність:</strong> {data.maxCapacity}</p>
@@ -45,7 +41,6 @@ const Results = ({ data, points, onPointToggle }) => {
                 <TransformWrapper>
                     <TransformComponent>
                         <svg width={600} height={600}>
-                            {/* Сітка та осі */}
                             {[...Array(scale / 10 + 1)].map((_, i) => {
                                 const val = i * 10;
                                 const pos = 600 - val * scaleFactor;
@@ -59,9 +54,8 @@ const Results = ({ data, points, onPointToggle }) => {
                                 );
                             })}
 
-                            {/* Точки */}
                             {points.map((p, i) => {
-                                if (!p) return null;
+                                if (!p || p.isHidden) return null;
                                 const included = data.bestSolution[i] === 1;
                                 return (
                                     <circle
@@ -94,6 +88,7 @@ Results.propTypes = {
     points: PropTypes.arrayOf(PropTypes.shape({
         x: PropTypes.number.isRequired,
         y: PropTypes.number.isRequired,
+        isHidden: PropTypes.bool,
     })).isRequired,
     onPointToggle: PropTypes.func.isRequired,
 };

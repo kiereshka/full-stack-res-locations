@@ -1,3 +1,4 @@
+import logo from './logo.png';
 import React, { useState, useEffect } from 'react';
 import SetupForm from './components/SetupForm';
 import InteractiveMap from './components/InteractiveMap';
@@ -20,12 +21,15 @@ const App = () => {
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [triggerConfetti, setTriggerConfetti] = useState(false);
+    const [errorMessage, setErrorMessage] = useState(null); // ⬅️ нове
 
     const [width, height] = useWindowSize();
 
     const handlePointToggle = (index) => {
         const newPoints = [...points];
-        newPoints[index] = null; // Позначаємо як видалений
+        if (newPoints[index]) {
+            newPoints[index].isHidden = !newPoints[index].isHidden;
+        }
         setPoints(newPoints);
     };
 
@@ -64,6 +68,14 @@ const App = () => {
         setLoading(true);
         setShowSuccess(false);
         setTriggerConfetti(false);
+        setErrorMessage(null); // ⬅️ скидаємо помилку
+
+        // Перевірка валідності даних
+        if (!data || data.length !== points.length) {
+            setErrorMessage("Некоректні або відсутні дані для точок.");
+            setLoading(false);
+            return;
+        }
 
         const requestData = {
             M: points.length,
@@ -82,7 +94,7 @@ const App = () => {
         try {
             const response = await axios.post('/api/Optimization', requestData);
             const duration = Date.now() - start;
-            const delay = Math.max(0, 2000 - duration); // гарантуємо 2 секунди
+            const delay = Math.max(0, 2000 - duration);
 
             setTimeout(() => {
                 setResults(response.data);
@@ -92,7 +104,8 @@ const App = () => {
             }, delay);
         } catch (error) {
             setLoading(false);
-            alert(`Помилка при виконанні алгоритму: ${error.response?.data || error.message}`);
+            const message = error.response?.data || error.message || "Невідома помилка";
+            setErrorMessage(message); // ⬅️ зберігаємо помилку
         }
     };
 
@@ -104,10 +117,10 @@ const App = () => {
         setResults(null);
         setShowSuccess(false);
         setTriggerConfetti(false);
+        setErrorMessage(null);
         setStep('map');
     };
 
-    // Автоматичне завершення конфеті через 5 секунд
     useEffect(() => {
         if (triggerConfetti) {
             const timer = setTimeout(() => setTriggerConfetti(false), 5000);
@@ -150,10 +163,16 @@ const App = () => {
             )}
 
             {data && !results && (
-                <div className="text-center mt-3">
+                <div className="text-center mt-5 d-flex flex-column align-items-center justify-content-center" style={{ minHeight: '50vh' }}>
+                    <img src={logo} alt="Логотип" style={{ maxWidth: '200px', marginBottom: '20px' }} />
                     <Button onClick={handleRunAlgorithm} variant="primary">
                         Запустити алгоритм
                     </Button>
+                    {errorMessage && (
+                        <Alert variant="danger" className="mt-3">
+                            {errorMessage}
+                        </Alert>
+                    )}
                 </div>
             )}
 
