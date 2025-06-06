@@ -23,6 +23,12 @@ const App = () => {
 
     const [width, height] = useWindowSize();
 
+    const handlePointToggle = (index) => {
+        const newPoints = [...points];
+        newPoints[index] = null; // Позначаємо як видалений
+        setPoints(newPoints);
+    };
+
     const handlePointsPlaced = (placedPoints) => {
         setPoints(placedPoints);
         setStep('parameters');
@@ -164,7 +170,7 @@ const App = () => {
                 </Alert>
             )}
 
-            {results && <Results data={results} points={points} />}
+            {results && <Results data={results} points={points} onPointToggle={handlePointToggle} />}
         </div>
     );
 };

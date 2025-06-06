@@ -1,229 +1,165 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { Button } from 'react-bootstrap';
+import React, { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import './InteractiveMap.css';
 
 const InteractiveMap = ({ onPointsPlaced, initialPoints = [] }) => {
     const [points, setPoints] = useState(initialPoints);
-    const [dragging, setDragging] = useState(null);
-    const [justDropped, setJustDropped] = useState(false);
-    const svgRef = useRef(null);
+    const [scale, setScale] = useState(100);
+    const canvasRef = useRef(null);
+    const wrapperRef = useRef(null);
+    const isInteractingRef = useRef(false);
+    const [transform, setTransform] = useState({ scale: 1, positionX: 0, positionY: 0 });
 
-    const GRID_SIZE = 100;
-    const GRID_STEP = 10;
+    const canvasSize = 1000;
+    const scaleFactor = canvasSize / scale;
 
-    const snapToGrid = (x, y) => {
-        const snappedX = Math.round(Math.max(0, Math.min(x, GRID_SIZE)) / GRID_STEP) * GRID_STEP;
-        const snappedY = Math.round(Math.max(0, Math.min(y, GRID_SIZE)) / GRID_STEP) * GRID_STEP;
-        return { x: snappedX, y: snappedY };
-    };
+    const handleClick = (e) => {
+        if (e.detail !== 1 || isInteractingRef.current || e.target.closest('circle')) return;
 
-    const getSvgCoordinates = (event) => {
-        const svg = svgRef.current;
-        if (!svg) {
-            console.error('SVG ref is null');
-            return null;
-        }
+        const rect = canvasRef.current.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
 
-        const point = svg.createSVGPoint();
-        point.x = event.clientX;
-        point.y = event.clientY;
+        const realX = (offsetX - transform.positionX) / transform.scale;
+        const realY = (offsetY - transform.positionY) / transform.scale;
 
-        const ctm = svg.getScreenCTM();
-        if (!ctm) {
-            console.error('CTM is null');
-            return null;
-        }
+        const newX = Math.floor(realX / scaleFactor);
+        const newY = Math.floor(realY / scaleFactor);
 
-        const transformedPoint = point.matrixTransform(ctm.inverse());
-        const x = transformedPoint.x;
-        const y = GRID_SIZE - transformedPoint.y;
-        return snapToGrid(x, y);
-    };
-
-    const handleClick = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (justDropped) {
-            console.log('Ignoring click after drag');
-            return;
-        }
-
-        const snappedPoint = getSvgCoordinates(event);
-        if (!snappedPoint) return;
-
-        console.log('Click coordinates:', { snappedPoint, existingPoints: points });
-
-        const exists = points.some(p => p.x === snappedPoint.x && p.y === snappedPoint.y);
-        if (!exists) {
-            setPoints([...points, snappedPoint]);
-        } else {
-            alert(`Точка з координатами (${snappedPoint.x}, ${snappedPoint.y}) вже існує.`);
+        if (
+            newX >= 0 &&
+            newX <= scale &&
+            newY >= 0 &&
+            newY <= scale &&
+            !points.some(p => p.x === newX && p.y === newY)
+        ) {
+            setPoints(prev => [...prev, { x: newX, y: newY }]);
         }
     };
 
-    const handleMouseDown = (index, e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Mouse down on point:', index);
-        setDragging(index);
+    const handlePointRemove = (index) => {
+        setPoints(prev => {
+            const copy = [...prev];
+            copy.splice(index, 1);
+            return copy;
+        });
     };
 
-    useEffect(() => {
-        let lastUpdate = 0;
-        const THROTTLE_MS = 60; // Обмеження до ~16 викликів на секунду
-
-        const handleMouseMove = (e) => {
-            const now = Date.now();
-            if (now - lastUpdate < THROTTLE_MS) return;
-            lastUpdate = now;
-
-            if (dragging !== null) {
-                const snappedPoint = getSvgCoordinates(e);
-                if (!snappedPoint) return;
-
-                console.log('Dragging point:', { snappedPoint, allPoints: points, draggingIndex: dragging });
-
-                const newPoints = [...points];
-                const oldPoint = newPoints[dragging];
-                newPoints[dragging] = snappedPoint;
-
-                const duplicateExists = newPoints.some(
-                    (p, i) => i !== dragging && p.x === snappedPoint.x && p.y === snappedPoint.y
-                );
-
-                console.log('Duplicate check:', { duplicateExists, newPoints, snappedPoint });
-
-                if (!duplicateExists) {
-                    setPoints(newPoints);
-                } else {
-                    alert(`Точка з координатами (${snappedPoint.x}, ${snappedPoint.y}) вже існує.`);
-                    newPoints[dragging] = oldPoint; // Відновлюємо стару позицію
-                }
-            }
-        };
-
-        const handleMouseUp = () => {
-            if (dragging !== null) {
-                console.log('Mouse up, dragging stopped');
-                setDragging(null);
-                setJustDropped(true);
-                setTimeout(() => setJustDropped(false), 200); // Збільшено таймаут
-            }
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-
-        return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [dragging, points]);
-
-    const handleConfirm = () => {
+    const handleScaleIncrease = () => setScale(s => Math.min(s + 10, 500));
+    const handleScaleDecrease = () => setScale(s => Math.max(s - 10, 10));
+    const handleDone = () => {
         if (points.length === 0) {
-            alert('Розмістіть хоча б одну точку перед підтвердженням.');
+            alert("Будь ласка, додайте хоча б одну точку");
             return;
         }
-        if (typeof onPointsPlaced !== 'function') {
-            console.error('onPointsPlaced is not a function:', onPointsPlaced);
-            return;
-        }
-        console.log('Confirming points:', points);
         onPointsPlaced(points);
     };
 
-    const gridLines = [];
-    for (let i = 0; i <= GRID_SIZE; i += GRID_STEP) {
-        gridLines.push(
-            <line key={`v${i}`} x1={i} y1="0" x2={i} y2={GRID_SIZE} stroke="#e0e0e0" strokeWidth="0.5" />,
-            <line key={`h${i}`} x1="0" y1={i} x2={GRID_SIZE} y2={i} stroke="#e0e0e0" strokeWidth="0.5" />
-        );
-    }
-
-    const axisLabels = [];
-    for (let i = 0; i <= GRID_SIZE; i += GRID_STEP) {
-        axisLabels.push(
-            <text key={`x${i}`} x={i} y={GRID_SIZE + 5} fontSize="4" textAnchor="middle">{i}</text>,
-            <text key={`y${i}`} x="-5" y={GRID_SIZE - i + 1} fontSize="4" textAnchor="end">{i}</text>
-        );
-    }
-
-    const colors = ['#007bff', '#dc3545', '#28a745', '#ffc107', '#6f42c1', '#fd7e14'];
+    const tickStep = scale <= 20 ? 1 : scale <= 100 ? 10 : 50;
+    const ticks = Array.from(
+        { length: Math.floor(scale / tickStep) + 1 },
+        (_, i) => i * tickStep
+    );
 
     return (
-        <div className="map-wrapper">
-            <TransformWrapper
-                initialScale={1}
-                minScale={0.5}
-                maxScale={5}
-                disabled={dragging !== null}
-                wheel={{ disabled: true }}
-                doubleClick={{ disabled: true }}
-                panning={{ disabled: dragging !== null }}
+        <div className="container-fluid mt-4" style={{ height: '100%' }}>
+            <h2>Оберіть локації на площині</h2>
+            <div className="mb-3">
+                Масштаб:
+                <button className="btn btn-secondary btn-sm mx-2" onClick={handleScaleDecrease}>−</button>
+                <strong>{scale}</strong>
+                <button className="btn btn-secondary btn-sm mx-2" onClick={handleScaleIncrease}>+</button>
+            </div>
+
+            <div
+                style={{
+                    border: '1px solid #ccc',
+                    width: '100%',
+                    maxHeight: '80vh',
+                    aspectRatio: '1 / 1',
+                    margin: '0 auto',
+                }}
             >
-                <TransformComponent>
-                    <svg
-                        ref={svgRef}
-                        width="100%"
-                        height="600px"
-                        viewBox="-10 -10 120 120"
-                        onClick={handleClick}
-                        className="map-svg"
+                <TransformWrapper
+                    doubleClick={{ disabled: true }}
+                    onPanning={() => { isInteractingRef.current = true; }}
+                    onPanningStop={({ state }) => {
+                        isInteractingRef.current = false;
+                        setTransform(state);
+                    }}
+                    onZoom={() => { isInteractingRef.current = true; }}
+                    onZoomStop={({ state }) => {
+                        isInteractingRef.current = false;
+                        setTransform(state);
+                    }}
+                >
+                    <TransformComponent
+                        wrapperStyle={{ width: '100%', height: '100%' }}
+                        contentStyle={{ width: '100%', height: '100%' }}
                     >
-                        {gridLines}
-                        <line x1="0" y1={GRID_SIZE} x2={GRID_SIZE} y2={GRID_SIZE} stroke="#333" strokeWidth="1" />
-                        <line x1="0" y1="0" x2="0" y2={GRID_SIZE} stroke="#333" strokeWidth="1" />
-                        <text x={GRID_SIZE + 5} y={GRID_SIZE} fontSize="6" fill="#333">X</text>
-                        <text x="0" y="-5" fontSize="6" fill="#333">Y</text>
-                        {axisLabels}
-                        {points.map((p, i) => (
-                            <g key={i}>
-                        <circle
-                            cx={p.x}
-                            cy={GRID_SIZE - p.y}
-                            r="3"
-                            fill={colors[i % colors.length]}
-                            stroke="black" strokeWidth="1"
-                            className="click"
-                            onMouseDown={(e) => handleMouseDown(i, e)}
-                        />
-                        <text
-                            x={p.x + 4}
-                            y={GRID_SIZE - p.y - 2}
-                            fontSize="4"
-                            fill={colors[i % colors.length]}
-                            className="map-point-label"
+                        <svg
+                            ref={canvasRef}
+                            width="100%"
+                            height="100%"
+                            viewBox={`0 0 ${canvasSize} ${canvasSize}`}
+                            onClick={handleClick}
+                            style={{ background: '#fff', touchAction: 'none', display: 'block' }}
                         >
-                            ({p.x}, {p.y})
-                        </text>
-                    </g>
-                    ))}
-                    </svg>
-                </TransformComponent>
-            </TransformWrapper>
-            <Button onClick={handleConfirm} className="map-button">
-                Підтвердити розташування
-            </Button>
+                            {ticks.map(t => {
+                                const pos = t * scaleFactor;
+                                const xPos = t * scaleFactor;
+                                return (
+                                    <g key={t}>
+                                        <line x1={0} y1={pos} x2={canvasSize} y2={pos} stroke="#eee" strokeWidth={1} />
+                                        <text x={2} y={pos - 2} fontSize={10} fill="#555">{t}</text>
+                                        <line x1={xPos} y1={0} x2={xPos} y2={canvasSize} stroke="#eee" strokeWidth={1} />
+                                        <text x={xPos + 2} y={12} fontSize={10} fill="#555">{t}</text>
+                                    </g>
+                                );
+                            })}
+
+                            {points.map((p, i) => {
+                                const cx = p.x * scaleFactor;
+                                const cy = p.y * scaleFactor;
+                                return (
+                                    <g key={`${p.x}-${p.y}`}>
+                                        <circle
+                                            cx={cx}
+                                            cy={cy}
+                                            r={5}
+                                            fill="blue"
+                                            stroke="black"
+                                            strokeWidth={1}
+                                            onDoubleClick={(e) => {
+                                                e.stopPropagation();
+                                                handlePointRemove(i);
+                                            }}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                        <text x={cx + 6} y={cy - 6} fontSize={12} fill="#000">
+                                            ({p.x}, {p.y})
+                                        </text>
+                                    </g>
+                                );
+                            })}
+                        </svg>
+                    </TransformComponent>
+                </TransformWrapper>
+            </div>
+
+            <div className="mt-3">
+                <button className="btn btn-primary" onClick={handleDone}>
+                    Продовжити
+                </button>
+            </div>
         </div>
     );
 };
 
 InteractiveMap.propTypes = {
     onPointsPlaced: PropTypes.func.isRequired,
-    initialPoints: PropTypes.arrayOf(
-        PropTypes.shape({
-            x: PropTypes.number.isRequired,
-            y: PropTypes.number.isRequired,
-        })
-    ),
-};
-
-InteractiveMap.defaultProps = {
-    initialPoints: [],
+    initialPoints: PropTypes.array,
 };
 
 export default InteractiveMap;
