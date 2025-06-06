@@ -56,21 +56,32 @@ const Results = ({ data, points, onPointToggle }) => {
 
                             {points.map((p, i) => {
                                 if (!p || p.isHidden) return null;
+
                                 const included = data.bestSolution[i] === 1;
+                                const cx = p.x * scaleFactor;
+                                const cy = 600 - p.y * scaleFactor;
+
                                 return (
-                                    <circle
-                                        key={i}
-                                        cx={p.x * scaleFactor}
-                                        cy={600 - p.y * scaleFactor}
-                                        r={5}
-                                        fill={included ? 'green' : 'red'}
-                                        stroke="black"
-                                        strokeWidth="1"
-                                        onClick={() => onPointToggle(i)}
-                                        style={{ cursor: 'pointer' }}
-                                    />
+                                    <g key={i}>
+                                        <circle
+                                            cx={cx}
+                                            cy={cy}
+                                            r={5}
+                                            fill={included ? 'green' : 'red'}
+                                            stroke="black"
+                                            strokeWidth="1"
+                                            onClick={() => onPointToggle(i)}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                        {included && (
+                                            <text x={cx + 6} y={cy - 6} fontSize={12} fill="#000">
+                                                ({p.x}, {p.y})
+                                            </text>
+                                        )}
+                                    </g>
                                 );
                             })}
+
                         </svg>
                     </TransformComponent>
                 </TransformWrapper>

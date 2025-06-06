@@ -19,11 +19,9 @@ const App = () => {
     const [data, setData] = useState(null);
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
+    const [errorMessage, setErrorMessage] = useState(null);
+    const { width, height } = useWindowSize();
     const [triggerConfetti, setTriggerConfetti] = useState(false);
-    const [errorMessage, setErrorMessage] = useState(null); // ⬅️ нове
-
-    const [width, height] = useWindowSize();
 
     const handlePointToggle = (index) => {
         const newPoints = [...points];
@@ -46,31 +44,40 @@ const App = () => {
     const handleInputMethodSelect = (method) => {
         setInputMethod(method);
         setShowModal(false);
+
         if (method === 'random') {
+            const confirmGen = window.confirm(
+                '⚠️ Увага!\n\nВипадкова генерація не враховує бюджет напряму.\nДані можуть перевищити обмеження.\n\nБажаєте продовжити?'
+            );
+
+            if (!confirmGen) {
+                setInputMethod(null);
+                setShowModal(true);
+                return;
+            }
+
             const generatedData = generateRandomData(points.length, parameters.n, parameters.C);
             setData(generatedData);
         }
+    };
+
+    const generateRandomData = (m, n, C) => {
+        return Array.from({ length: m }, () => ({
+            costs: Array.from({ length: n }, () => Math.floor(Math.random() * 51) + 50), // 50–100
+            capacities: Array.from({ length: n }, () => Math.floor(Math.random() * 401) + 100),
+        }));
     };
 
     const handleDataSubmit = (inputData) => {
         setData(inputData);
     };
 
-    const generateRandomData = (m, n, C) => {
-        const maxCostPerRES = Math.floor(C / n);
-        return Array.from({ length: m }, () => ({
-            costs: Array.from({ length: n }, () => Math.floor(Math.random() * (maxCostPerRES - 50 + 1)) + 50),
-            capacities: Array.from({ length: n }, () => Math.floor(Math.random() * 401) + 100),
-        }));
-    };
-
     const handleRunAlgorithm = async () => {
         setLoading(true);
-        setShowSuccess(false);
+        setErrorMessage(null);
+        setResults(null);
         setTriggerConfetti(false);
-        setErrorMessage(null); // ⬅️ скидаємо помилку
 
-        // Перевірка валідності даних
         if (!data || data.length !== points.length) {
             setErrorMessage("Некоректні або відсутні дані для точок.");
             setLoading(false);
@@ -90,22 +97,20 @@ const App = () => {
             })),
         };
 
-        const start = Date.now();
         try {
             const response = await axios.post('/api/Optimization', requestData);
-            const duration = Date.now() - start;
-            const delay = Math.max(0, 2000 - duration);
+            setResults(response.data);
 
-            setTimeout(() => {
-                setResults(response.data);
-                setShowSuccess(true);
+            const hasSolution = response.data.bestSolution?.some((x) => x === 1);
+            if (hasSolution) {
                 setTriggerConfetti(true);
-                setLoading(false);
-            }, delay);
+                setTimeout(() => setTriggerConfetti(false), 3000);
+            }
         } catch (error) {
-            setLoading(false);
             const message = error.response?.data || error.message || "Невідома помилка";
-            setErrorMessage(message); // ⬅️ зберігаємо помилку
+            setErrorMessage(message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -115,23 +120,12 @@ const App = () => {
         setInputMethod(null);
         setData(null);
         setResults(null);
-        setShowSuccess(false);
-        setTriggerConfetti(false);
         setErrorMessage(null);
         setStep('map');
     };
 
-    useEffect(() => {
-        if (triggerConfetti) {
-            const timer = setTimeout(() => setTriggerConfetti(false), 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [triggerConfetti]);
-
     return (
         <div className="container py-4 position-relative">
-            {triggerConfetti && <Confetti width={width} height={height} recycle={false} />}
-
             {step === 'map' && (
                 <InteractiveMap
                     onPointsPlaced={handlePointsPlaced}
@@ -183,13 +177,19 @@ const App = () => {
                 </div>
             )}
 
-            {showSuccess && (
-                <Alert variant="success" className="text-center mt-4 fs-5">
-                    🎉 Ваше рішення знайдено! 🏆
+            {results && (
+                <Alert
+                    variant={results.bestSolution?.some((x) => x === 1) ? 'success' : 'danger'}
+                    className="text-center mt-4 fs-5"
+                >
+                    {results.bestSolution?.some((x) => x === 1)
+                        ? '🎉 Ваше рішення знайдено! 🏆'
+                        : '❗ Рішення не було знайдено через обмеження бюджету або конфлікти'}
                 </Alert>
             )}
 
             {results && <Results data={results} points={points} onPointToggle={handlePointToggle} />}
+            {triggerConfetti && <Confetti width={width} height={height} />}
         </div>
     );
 };
